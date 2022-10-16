@@ -32,12 +32,12 @@ int mydgetrf(double *A, int *ipiv, int n)
 
     for (i=0; i<n-1; i++) {
         int maxind = i;
-        int max = abs(A[i*n + i]);
+        double max = fabs(A[i*n + i]);
         // Find greatest value in column
         for(t=i+1; t<n; t++) {
-            if (abs(A[t*n + i]) > max) {
+            if (fabs(A[t*n + i]) > max) {
                 maxind = t;
-                max = abs(A[t*n + i]);
+                max = fabs(A[t*n + i]);
             }
         }
         if (max == 0)
@@ -48,7 +48,7 @@ int mydgetrf(double *A, int *ipiv, int n)
             ipiv[i] = ipiv[maxind];
             ipiv[maxind] = temps;
             // Swap rows
-            for(j = 0; j<n; j++) {
+            for(j=0; j<n; j++) {
                 double tempv = A[i*n + j];
                 A[i*n + j] = A[maxind*n + j];
                 A[maxind*n + j] = tempv;
@@ -58,7 +58,7 @@ int mydgetrf(double *A, int *ipiv, int n)
         for(j=i+1; j<n; j++) {
             A[j*n + i] = A[j*n + i] / A[i*n + i];
             for (k=i+1; k<n; k++) {
-                A[j*n + k] = A[j*n + k] - A[j*n + i] * A[i*n + k];
+                A[j*n + k] = A[j*n + k] - (A[j*n + i] * A[i*n + k]);
             }
         }
     }
