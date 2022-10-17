@@ -2,8 +2,8 @@
 
 int get_block_size(){
     //return the block size you'd like to use
-    /*add your code here */
-    return 3;
+    // Should be a multiple of 3, as the DGEMM uses blockes of 3x3
+    return 3*10;
 
 }
 
@@ -134,17 +134,6 @@ void mydtrsv(char UPLO, double *A, double *B, int n, int *ipiv)
  **/
 void mydgemm(double *A, double *B, double *C, int n, int in_i, int in_j, int in_k, int b)
 {
-    /*
-    int i, j, k;
-    for(i=0; i<in_i; i++) {
-        for(j=0; j<in_j; j++) {
-            for(k=0; k<in_k; k++) {
-                // printf("i=%i; j=%i; k=%i; C[%i][%i] += %f * %f\n", i, j, k, i, j, A[i*n+k], B[k*n+j]);
-                C[i*in_i+j] += A[i*n+k] * B[k*n+j];
-            }
-        }
-    }
-    */
     int i, j, k;
     int i1, j1, k1;
 
@@ -160,7 +149,6 @@ void mydgemm(double *A, double *B, double *C, int n, int in_i, int in_j, int in_
                         register double c10 = C[ijn]; register double c11 = C[ijn+1]; register double c12 = C[ijn+2];
                         register double c20 = C[ijnn]; register double c21 = C[ijnn+1]; register double c22 = C[ijnn+2];
                         for (k1 = k; k1 < k+b; k1+=3) {
-                            // printf("i1=%i; j1=%i; k1=%i;\n", i1, j1, k1);
                             register int ik = i1*n+k1; register int ikn = ik+n; register int iknn = ikn+n;
                             register int kj = k1*n+j1; register int kjn = kj+n; register int kjnn = kjn+n;
 
@@ -248,7 +236,7 @@ int mydgetrf_block(double *A, int *ipiv, int n, int b)
     for(ib=0; ib<n-1; ib+=b) {
         int end = ib+b;
 
-        // BLAS2 version to calculate P*L*U
+        // (1) BLAS2 version to calculate P*L*U
 
         // Process each column in block
         for(i=ib; i<end; i++) {
@@ -279,25 +267,26 @@ int mydgetrf_block(double *A, int *ipiv, int n, int b)
 
             // Second, factorize remaining columns
             for(j=i+1; j<n; j++) {
-                A[j*n + i] = A[j*n + i] / A[i*n + i];
+                register double a = A[j*n + i] = A[j*n + i] / A[i*n + i];
                 for (k=i+1; k<end; k++) {
-                    A[j*n + k] = A[j*n + k] - (A[j*n + i] * A[i*n + k]);
+                    A[j*n + k] = A[j*n + k] - (a * A[i*n + k]);
                 }
             }
         }
 
-        // Update the rows
+        // (2) Update the rows
         int count=1;
         for(i=ib+1; i<end; i++) { // Row (+1 because we shouldnt have to do anything for the first row)
-            for(j=end; j<n; j++) { // Col
-                for(k=0; k<count; k++) {
-                    A[i*n + j] = A[i*n + j] - (A[i*n + (k+ib)] * A[(k+ib)*n + j]);
+            for(k=0; k<count; k++) {
+                register double temp = A[i*n + (k+ib)];
+                for(j=end; j<n; j++) { // Col
+                    A[i*n + j] -= (temp * A[(k+ib)*n + j]);
                 }
             }
             count++;
         }
 
-        // Update rest of matrix (green area)
+        // (3) Update rest of matrix (green area)
         // mydgemm(cont double *A, const double *B, double *C, int n, int i, int j, int k, int b);
         // Need to multiply A[end+1:n, ib:end] by A[ib:end, end+1:n]
         int ii = n-end;
