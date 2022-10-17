@@ -132,8 +132,9 @@ void mydtrsv(char UPLO, double *A, double *B, int n, int *ipiv)
  * Same function as what you used in lab1, cache_part4.c : optimal( ... ).
  * Block size must be multiple of 3
  **/
-void mydgemm(const double *A, const double *B, double *C, int n, int in_i, int in_j, int in_k, int b)
+void mydgemm(double *A, double *B, double *C, int n, int in_i, int in_j, int in_k, int b)
 {
+    /*
     int i, j, k;
     for(i=0; i<in_i; i++) {
         for(j=0; j<in_j; j++) {
@@ -143,7 +144,7 @@ void mydgemm(const double *A, const double *B, double *C, int n, int in_i, int i
             }
         }
     }
-    /*
+    */
     int i, j, k;
     int i1, j1, k1;
 
@@ -153,12 +154,13 @@ void mydgemm(const double *A, const double *B, double *C, int n, int in_i, int i
                 // Cache reuse block (multiple of 3x3)
                 for (i1 = i; i1 < i+b; i1+=3) {
                     for (j1 = j; j1 < j+b; j1+=3) {
-                        int ij = i1*n+j1; int ijn = ij+n; int ijnn = ijn+n;
+                        int ij = i1*in_i+j1; int ijn = ij+in_i; int ijnn = ijn+in_i;
 
                         register double c00 = C[ij]; register double c01 = C[ij+1]; register double c02 = C[ij+2];
                         register double c10 = C[ijn]; register double c11 = C[ijn+1]; register double c12 = C[ijn+2];
                         register double c20 = C[ijnn]; register double c21 = C[ijnn+1]; register double c22 = C[ijnn+2];
                         for (k1 = k; k1 < k+b; k1+=3) {
+                            // printf("i1=%i; j1=%i; k1=%i;\n", i1, j1, k1);
                             register int ik = i1*n+k1; register int ikn = ik+n; register int iknn = ikn+n;
                             register int kj = k1*n+j1; register int kjn = kj+n; register int kjnn = kjn+n;
 
@@ -209,7 +211,6 @@ void mydgemm(const double *A, const double *B, double *C, int n, int in_i, int i
             }
         }
     }
-    */
     return;
 }
 
@@ -285,16 +286,11 @@ int mydgetrf_block(double *A, int *ipiv, int n, int b)
             }
         }
 
-        // printf("Iteration ib=%i\n", ib);
-        // printf("Post-factorization:\n");
-        // print_matrix(A, n, n);
-        // printf("ib=%i, end=%i, n=%i\n", ib, end, n);
-        // Update the rows ib=3, end=6, n=9 :: i=4->5, j=6->8, k=3 ->
+        // Update the rows
         int count=1;
         for(i=ib+1; i<end; i++) { // Row (+1 because we shouldnt have to do anything for the first row)
             for(j=end; j<n; j++) { // Col
                 for(k=0; k<count; k++) {
-                    // printf("k=%d ... %f = %f - (%f * %f)\n", k, A[i*n + j], A[i*n + j], A[i*n + k], A[k*n + j]);
                     A[i*n + j] = A[i*n + j] - (A[i*n + (k+ib)] * A[(k+ib)*n + j]);
                 }
             }
@@ -307,28 +303,16 @@ int mydgetrf_block(double *A, int *ipiv, int n, int b)
         int ii = n-end;
         int kk = end-ib;
 
-        // printf("%d, %d, %d\n", ii, ii, kk);
-
-        double *C = (double *)calloc(ii * ii, sizeof(double));
+        double *C = (double *)calloc(n * n, sizeof(double));
         mydgemm(&A[end*n + ib], &A[ib*n + end], C, n, ii, ii, kk, b);
 
-        // printf("Post row update\n");
-        // print_matrix(A, n, n);
-        // print_matrix(C, ii, ii);
-
-        // printf("ib+b=%i, n=%i\n", ib+b, n);
         for(i=ib+b; i<n; i++) { // Row
             for(j=ib+b; j<n; j++) { // Col
-                // printf("A[%i][%i] (%f) -= C[%i][%i] (%f)\n", i, j, A[i*n + j], i-end, j-end, C[(i-end)*ii + (j-end)]);
                 A[i*n + j] -= C[(i-end)*ii + (j-end)];
             }
         }
 
         free(C);
-
-        // printf("Post center update\n");
-        // print_matrix(A, n, n);
-        // printf("\n\n");
     }
     return 0;
 }
