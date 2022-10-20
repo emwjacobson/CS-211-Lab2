@@ -267,7 +267,7 @@ int mydgetrf_block(double *A, int *ipiv, int n, int b)
 
             // Second, factorize remaining columns
             for(j=i+1; j<n; j++) {
-                register double a = A[j*n + i] = A[j*n + i] / A[i*n + i];
+                register double a = A[j*n + i] /= A[i*n + i];
                 for (k=i+1; k<end; k++) {
                     A[j*n + k] = A[j*n + k] - (a * A[i*n + k]);
                 }
